@@ -1,5 +1,6 @@
 # AeroDeep — Python Dependencies
-
+.python-version
+3.11
 # Core
 numpy>=1.24.0
 pandas>=2.0.0
