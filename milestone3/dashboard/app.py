@@ -1,12 +1,21 @@
 """
-app.py
+milestone3/dashboard/app.py
 Main Multi-Page Dashboard Shell, Routing Controller, and Gateway Interface.
 """
+import os
+import sys
+
+# ── HIGH PRIORITY PATH INJECTION ──
+# Forces Python to look locally FIRST, avoiding cloud environment naming collisions
+local_dir = os.path.dirname(os.path.abspath(__file__))
+if local_dir not in sys.path:
+    sys.path.insert(0, local_dir)
+
 import streamlit as st
 import json
 import pandas as pd
 
-# Core architecture imports
+# Core architecture imports (Now guaranteed to look locally first)
 from data_manager import normalize_json_payload, normalize_csv_tabular
 from risk_panel import render_risk_panel
 from graph_view import render_graph_view
@@ -18,7 +27,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ── TRACK PERSISTENT STATE ACCROSS NAVIGATION RERUNS ──
+# ── TRACK PERSISTENT STATE ACROSS NAVIGATION RERUNS ──
 if "last_diagnostic" not in st.session_state:
     default_init, _ = normalize_json_payload({})
     st.session_state.last_diagnostic = default_init
