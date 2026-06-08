@@ -2,8 +2,8 @@
 milestone3/dashboard/app.py
 
 AeroDeep Universal Multipage Streamlit Dashboard.
-Main entry point — dynamically handles native JSON metrics or custom CSV telemetry,
-and automatically extracts/updates the selected operational unit.
+Robust fallback handling for JSON (lists/dicts) and CSV tabular telemetry.
+Dynamically maps and injects unit identifiers directly into the global selectbox.
 
 Run: streamlit run milestone3/dashboard/app.py
 """
@@ -74,42 +74,54 @@ with st.sidebar:
 
     if uploaded_file is not None:
         try:
-            # Initialize placeholder values for state tracking
             inferred_unit = None
             parsed_diagnostic = None
             alerts = []
 
-            # ---- FORMAT A: NATIVE JSON PROCESSING ----
+            # ──── FORMAT A: JSON LOADING & TYPE-SAFE EXTRACTION ────
             if uploaded_file.name.endswith('.json'):
-                # Reset file position pointer to avoid empty buffer reads
                 uploaded_file.seek(0)
                 data = json.load(uploaded_file)
                 
-                # Extract dynamic unit identifier
                 if 'unit_id' in data:
                     inferred_unit = str(data['unit_id'])
                 
-                # Extract structural diagnostics parameters
                 ttf = float(data.get('ttf_hours', 48.0))
-                confidence = float(data.get('ttf_confidence', 0.85)) * 100 if float(data.get('ttf_confidence', 1)) <= 1 else float(data.get('ttf_confidence', 85))
                 
+                # Normalize confidence to percentage
+                raw_conf = data.get('ttf_confidence', 0.85)
+                confidence = float(raw_conf) * 100 if float(raw_conf) <= 1.0 else float(raw_conf)
+                
+                # Determine absolute highest operational risk
                 node_risks = data.get('node_risk', {})
                 highest_risk = float(max(node_risks.values()) * 100) if node_risks else 0.0
                 if highest_risk == 0.0 and 'fault_probabilities' in data:
                     highest_risk = float(max(data['fault_probabilities'].values()) * 100)
 
-                # Route explicit top faults array into UI component loops
-                top_faults = data.get('top_faults', [])
-                if not top_faults and 'fault_probabilities' in data:
-                    # Dynamically convert raw floating-point hazards into system alert entities
-                    sorted_faults = sorted(data['fault_probabilities'].items(), key=lambda x: x[1], reverse=True)
-                    top_faults = [{"fault": k, "probability": v} for k, v in sorted_faults if v > 0.3]
-
-                for item in top_faults:
-                    fault_name = item.get('fault', 'Mechanical Aberration')
-                    prob = item.get('probability', 1.0)
-                    severity = "Critical" if prob > 0.7 else "High"
-                    alerts.append({"component": "Subsystem Matrix", "type": fault_name, "severity": severity})
+                # Type-Safe Parsing for top_faults Array Configurations
+                raw_faults = data.get('top_faults', [])
+                
+                if isinstance(raw_faults, list):
+                    for item in raw_faults:
+                        # Handle List of Lists structure: [["fault_name", 0.82]]
+                        if isinstance(item, list) and len(item) >= 2:
+                            fault_name = str(item[0])
+                            prob = float(item[1])
+                            severity = "Critical" if prob > 0.7 else "High"
+                            alerts.append({"component": "Subsystem Matrix", "type": fault_name, "severity": severity})
+                        # Handle List of Dicts structure: [{"fault": "name", "probability": 0.82}]
+                        elif isinstance(item, dict):
+                            fault_name = item.get('fault', 'Mechanical Aberration')
+                            prob = float(item.get('probability', 1.0))
+                            severity = "Critical" if prob > 0.7 else "High"
+                            alerts.append({"component": "Subsystem Matrix", "type": fault_name, "severity": severity})
+                
+                # If top_faults was missing, dynamically convert raw fault_probabilities
+                if not alerts and 'fault_probabilities' in data:
+                    for fault_name, prob in data['fault_probabilities'].items():
+                        if prob > 0.3:
+                            severity = "Critical" if prob > 0.7 else "High"
+                            alerts.append({"component": "Subsystem Matrix", "type": fault_name, "severity": severity})
 
                 parsed_diagnostic = {
                     "unit_id": inferred_unit if inferred_unit else st.session_state.selected_unit,
@@ -121,20 +133,17 @@ with st.sidebar:
                     "raw_matrix": data
                 }
 
-            # ---- FORMAT B: TABULAR CSV PROCESSING ----
+            # ──── FORMAT B: TABULAR LOG INGESTION ────
             else:
                 uploaded_file.seek(0)
                 df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
                 
-                # Extract dynamic identifier directly from tabular records if present
-                if 'Product ID' in df.columns:
-                    inferred_unit = str(df['Product ID'].iloc[0])
-                elif 'Ticker' in df.columns: # Handle standalone market files gracefully
-                    inferred_unit = str(df['Ticker'].iloc[0])
-                elif 'unit_id' in df.columns:
-                    inferred_unit = str(df['unit_id'].iloc[0])
+                # Search for any valid tracking identifiers in columns
+                for col in ['Product ID', 'Ticker', 'unit_id', 'Asset ID', 'UDI']:
+                    if col in df.columns:
+                        inferred_unit = str(df[col].iloc[0])
+                        break
 
-                # Process standard industrial columns (e.g., ai4i2020 layout)
                 if 'Machine failure' in df.columns:
                     total_failures = int(df['Machine failure'].sum())
                     highest_risk = 94.8 if total_failures > 0 else 14.2
@@ -161,7 +170,7 @@ with st.sidebar:
                         "raw_matrix": df.to_dict(orient="records")
                     }
                 else:
-                    # Fallback structural framework for unrecognized datasets
+                    # Clean handling for general datasets (like ticker exports)
                     parsed_diagnostic = {
                         "unit_id": inferred_unit if inferred_unit else st.session_state.selected_unit,
                         "time_to_failure": 168.0,
@@ -172,18 +181,15 @@ with st.sidebar:
                         "raw_matrix": df.to_dict(orient="records")
                     }
 
-            # ---- MUTATION: FORCE SYNCHRONIZATION OF CURRENT ACTIVE UNIT ----
+            # ── DYNAMIC TRACKING INJECTION & SYNCHRONIZATION ──
             if inferred_unit:
-                # Add extracted target device to selections list if missing
                 if inferred_unit not in st.session_state.unit_list:
                     st.session_state.unit_list.append(inferred_unit)
-                # Overwrite session variables to force update interface tracking components
                 st.session_state.selected_unit = inferred_unit
 
-            # Store computed dictionary inside state memory
             st.session_state.last_diagnostic = parsed_diagnostic
             st.session_state.alert_history = alerts
-            st.success(f"Ingested logs for active asset unit: {st.session_state.selected_unit}")
+            st.success(f"Inference Complete for Asset Unit: {st.session_state.selected_unit}")
 
         except Exception as e:
             st.error(f"Universal Processing Engine Fault: {e}")
@@ -191,7 +197,11 @@ with st.sidebar:
 
     st.divider()
     st.markdown("**Unit Selection**")
-    # Bind selector component to variable tracking updates
+    
+    # Ensure selected_unit is safe to index inside the selection list
+    if st.session_state.selected_unit not in st.session_state.unit_list:
+        st.session_state.unit_list.append(st.session_state.selected_unit)
+        
     st.session_state.selected_unit = st.selectbox(
         "Active Asset Unit Focus", 
         st.session_state.unit_list,
