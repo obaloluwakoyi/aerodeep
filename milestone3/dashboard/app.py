@@ -7,6 +7,21 @@ Main entry point — sets up navigation and shared state.
 Run: streamlit run milestone3/dashboard/app.py
 """
 
+import os
+import sys
+
+# ─── CRITICAL PATH GUARDS FOR STREAMLIT CLOUD RUNTIMES ───────────────────
+# 1. Force recognition of the Git Repository Root
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+# 2. Force recognition of the Local Dashboard Directory
+dashboard_dir = os.path.dirname(os.path.abspath(__file__))
+if dashboard_dir not in sys.path:
+    sys.path.insert(0, dashboard_dir)
+# ─────────────────────────────────────────────────────────────────────────
+
 import streamlit as st
 
 st.set_page_config(
@@ -55,18 +70,18 @@ with st.sidebar:
     st.caption("AeroDeep v1.0.0 | Gulf of Guinea Ops")
 
 
-# ── Default landing page ──────────────────────────────────────────────────────
+# ── Default landing page & Imports ────────────────────────────────────────────
 current = st.session_state.get("current_page", "graph_view")
 
 if current == "graph_view":
-    from milestone3.dashboard.graph_view import render_graph_view
-    render_graph_view()
+    import graph_view
+    graph_view.render_graph_view()
 elif current == "risk_panel":
-    from milestone3.dashboard.risk_panel import render_risk_panel
-    render_risk_panel()
+    import risk_panel
+    risk_panel.render_risk_panel()
 elif current == "diagnostics":
-    from milestone3.dashboard.diagnostics import render_diagnostics
-    render_diagnostics()
+    import diagnostics
+    diagnostics.render_diagnostics()
 else:
     st.title("⚙️ Settings")
     st.text_input("API URL", value=st.session_state.api_url, key="api_url_input")
