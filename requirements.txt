@@ -9,7 +9,7 @@ pydantic>=2.0.0
 pyyaml>=6.0
 
 # Deep Learning
-torch-sparse>=0.6.18
+
 pytorch-lightning>=2.1.0
 transformers>=4.35.0
 sentence-transformers>=2.2.2
