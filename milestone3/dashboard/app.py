@@ -9,14 +9,13 @@ Run: streamlit run milestone3/dashboard/app.py
 
 import os
 import sys
+import pandas as pd
 
 # ─── CRITICAL PATH GUARDS FOR STREAMLIT CLOUD RUNTIMES ───────────────────
-# 1. Force recognition of the Git Repository Root
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-# 2. Force recognition of the Local Dashboard Directory
 dashboard_dir = os.path.dirname(os.path.abspath(__file__))
 if dashboard_dir not in sys.path:
     sys.path.insert(0, dashboard_dir)
@@ -40,6 +39,8 @@ if "last_diagnostic" not in st.session_state:
     st.session_state.last_diagnostic = None
 if "alert_history" not in st.session_state:
     st.session_state.alert_history = []
+if "uploaded_data" not in st.session_state:
+    st.session_state.uploaded_data = None
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -64,6 +65,33 @@ with st.sidebar:
         "Active Unit", units,
         index=units.index(st.session_state.selected_unit),
     )
+
+    # ── NEW: REAL DATA UPLOAD SECTION ─────────────────────────────────────────
+    st.divider()
+    st.markdown("📁 **Ingest Real-Time Data**")
+    uploaded_file = st.file_uploader(
+        "Upload telemetry telemetry logs (CSV/Excel)", 
+        type=["csv", "xlsx"],
+        help="Upload CSV exports containing compressor physical nodes, vibration signatures, or temperature sensors."
+    )
+
+    if uploaded_file is not None:
+        try:
+            # Parse dataset depending on format
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+            
+            # Save to global session state
+            st.session_state.uploaded_data = df
+            st.success(f"Loaded: {len(df)} rows successfully!")
+            
+            # Optional: Map parsed file contents directly to diagnostic records
+            # st.session_state.last_diagnostic = df.to_dict(orient="records")
+        except Exception as e:
+            st.error(f"Parsing error: {e}")
+    # ───────────────────────────────────────────────────────────────────────────
 
     st.divider()
     st.caption(f"API: {st.session_state.api_url}")
