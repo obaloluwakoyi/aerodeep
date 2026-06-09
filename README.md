@@ -167,19 +167,19 @@ Navigate to `http://localhost:8501` to access the operations console.
 
 ## 📋 Development Roadmap
 
-### **Milestone 1: Data Ingestion** (Weeks 1-4)
+### **Milestone 1: Data Ingestion** 
 - ✅ Kafka topic setup & consumer logic
 - ✅ TimescaleDB schema design
 - ✅ OCR pipeline for historical PDFs
 - ✅ Industrial-BERT embeddings
 
-### **Milestone 2: Graph Synthesis & ST-GCN** (Weeks 5-8)
+### **Milestone 2: Graph Synthesis & ST-GCN** 
 - ✅ Compressor topology modeling
 - ✅ Node-level feature fusion
 - ✅ Spatio-temporal GCN architecture
 - ✅ Graph visualization tools
 
-### **Milestone 3: Production & Dashboard** (Weeks 9-12)
+### **Milestone 3: Production & Dashboard** 
 - ✅ Dual-head model training (TTF + Classification)
 - ✅ FastAPI inference server
 - ✅ Streamlit operations dashboard
@@ -316,7 +316,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 ## 👤 Author
 
 **Balolowakoyi**  
-[GitHub](https://github.com/obaloluwakoyi) | [Email](mailto:contact@aerodeep.dev)
+[GitHub](https://github.com/obaloluwakoyi) | [Email](obaloluw@gmail.com)
 
 ---
 
@@ -341,6 +341,6 @@ For issues, feature requests, or questions:
 
 **AeroDeep**: Where Industrial Data Becomes Predictive Intelligence
 
-Made with ❤️ for offshore engineering teams
+
 
 </div>
